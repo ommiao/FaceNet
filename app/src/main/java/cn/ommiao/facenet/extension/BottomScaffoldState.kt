@@ -12,8 +12,8 @@ val BottomSheetScaffoldState.currentFraction: Float
         val currentValue = bottomSheetState.currentValue
 
         return when {
-            currentValue == BottomSheetValue.Collapsed && targetValue == BottomSheetValue.Collapsed -> 0f
-            currentValue == BottomSheetValue.Expanded && targetValue == BottomSheetValue.Expanded -> 1f
+            currentValue == BottomSheetValue.Collapsed && targetValue == BottomSheetValue.Collapsed -> if (fraction == 1f) 0f else fraction
+            currentValue == BottomSheetValue.Expanded && targetValue == BottomSheetValue.Expanded -> if (fraction == 1f) 1f else 1f - fraction
             currentValue == BottomSheetValue.Collapsed && targetValue == BottomSheetValue.Expanded -> fraction
             else -> 1f - fraction
         }
