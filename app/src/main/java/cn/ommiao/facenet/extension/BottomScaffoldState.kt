@@ -5,7 +5,7 @@ import androidx.compose.material.BottomSheetValue
 import androidx.compose.material.ExperimentalMaterialApi
 
 @OptIn(ExperimentalMaterialApi::class)
-val BottomSheetScaffoldState.currentFraction: Float
+val BottomSheetScaffoldState.expandFraction: Float
     get() {
         val fraction = bottomSheetState.progress.fraction
         val targetValue = bottomSheetState.targetValue

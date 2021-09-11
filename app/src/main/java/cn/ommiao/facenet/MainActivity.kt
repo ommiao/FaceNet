@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
-import cn.ommiao.facenet.extension.currentFraction
+import cn.ommiao.facenet.extension.expandFraction
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
@@ -44,13 +44,16 @@ class MainActivity : ComponentActivity() {
             FaceNetTheme {
                 val sheetPeekHeight = 150.dp
                 val scaffoldState = rememberBottomSheetScaffoldState()
+                val sheetBackgroundColor = Color.White.copy(alpha = scaffoldState.expandFraction)
+                val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
                 BottomSheetScaffold(
                     scaffoldState = scaffoldState,
                     sheetPeekHeight = sheetPeekHeight,
-                    sheetBackgroundColor = Color.Transparent,
-                    sheetElevation = 0.dp,
+                    sheetBackgroundColor = sheetBackgroundColor,
+                    sheetElevation = sheetElevation,
+                    sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                     sheetContent = {
-                        SheetContent(sheetPeekHeight, scaffoldState.currentFraction)
+                        SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
                     }
                 ) {
                     Box(
@@ -69,7 +72,7 @@ class MainActivity : ComponentActivity() {
     private fun SheetContent(actionRowHeight: Dp, expandFraction: Float) {
         val sheetContentHeight = 350.dp
         val offsetY = actionRowHeight * (1 - expandFraction)
-        val actionRowAlpha = 1.0f * (1 - expandFraction)
+        val actionRowAlpha = 1.0f * (1 - expandFraction * 3f)
         Box(modifier = Modifier.height(sheetContentHeight)) {
             ActionRow(actionRowHeight, actionRowAlpha)
             FacesSurface(offsetY, sheetContentHeight, expandFraction)
@@ -82,30 +85,25 @@ class MainActivity : ComponentActivity() {
         sheetContentHeight: Dp,
         expandFraction: Float
     ) {
-        Surface(
+        Column(
             modifier = Modifier
-                .offset(y = offsetY)
-                .clip(RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp))
-                .background(Color.White)
+                .alpha(expandFraction)
                 .fillMaxWidth()
-                .height(sheetContentHeight)
-                .alpha(expandFraction), elevation = 8.dp
+                .height(sheetContentHeight),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                FacesSurfaceSpinner(expandFraction)
-                val facesSize = 10
-                FacesSurfaceTitle(facesSize)
-                FacesLazyRow(facesSize)
-            }
+            FacesSurfaceSpinner(expandFraction, offsetY)
+            val facesSize = 10
+            FacesSurfaceTitle(facesSize, offsetY * 1.25f)
+            FacesLazyRow(facesSize, offsetY * 1.5f)
         }
     }
 
     @Composable
-    private fun FacesSurfaceSpinner(expandFraction: Float) {
+    private fun FacesSurfaceSpinner(expandFraction: Float, offsetY: Dp) {
         Spacer(
             modifier = Modifier
+                .offset(y = offsetY)
                 .padding(top = 10.dp)
                 .clip(RoundedCornerShape(4.dp))
                 .background(color = Color.Black)
@@ -115,8 +113,9 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun FacesLazyRow(facesSize: Int) {
+    private fun FacesLazyRow(facesSize: Int, offsetY: Dp) {
         LazyRow(
+            modifier = Modifier.offset(y = offsetY),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(bottom = 20.dp, start = 20.dp, end = 20.dp)
         ) {
@@ -142,7 +141,7 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    private fun FacesSurfaceTitle(facesSize: Int) {
+    private fun FacesSurfaceTitle(facesSize: Int, offsetY: Dp) {
         Text(
             text = buildAnnotatedString {
                 withStyle(SpanStyle(fontSize = 20.sp)) {
@@ -155,6 +154,7 @@ class MainActivity : ComponentActivity() {
             textAlign = TextAlign.Center,
             fontWeight = FontWeight.Bold,
             modifier = Modifier
+                .offset(y = offsetY)
                 .fillMaxWidth()
                 .padding(top = 5.dp, bottom = 20.dp, start = 20.dp, end = 20.dp)
         )
