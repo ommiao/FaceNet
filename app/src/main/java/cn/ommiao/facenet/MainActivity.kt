@@ -1,6 +1,9 @@
 package cn.ommiao.facenet
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.camera.core.CameraSelector
@@ -16,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -38,6 +42,9 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import cn.ommiao.facenet.extension.expandFraction
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.PermissionRequired
+import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
 sealed class UiAction {
@@ -56,35 +63,39 @@ class MainActivity : ComponentActivity() {
             SideEffect {
                 systemUiController.isSystemBarsVisible = false
             }
-            FaceNetTheme {
-                val scaffoldState = rememberBottomSheetScaffoldState(
-                    bottomSheetState = rememberBottomSheetState(
-                        initialValue = BottomSheetValue.Collapsed,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessLow
+            FeatureThatRequiresCameraPermission(featureContent = {
+                FaceNetTheme {
+                    val scaffoldState = rememberBottomSheetScaffoldState(
+                        bottomSheetState = rememberBottomSheetState(
+                            initialValue = BottomSheetValue.Collapsed,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioNoBouncy,
+                                stiffness = Spring.StiffnessLow
+                            )
                         )
                     )
-                )
-                CompositionLocalProvider(LocalUiActor provides getUiActor()) {
-                    val sheetPeekHeight = 150.dp
-                    val sheetBackgroundColor =
-                        Color.White.copy(alpha = scaffoldState.expandFraction)
-                    val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
-                    BottomSheetScaffold(
-                        scaffoldState = scaffoldState,
-                        sheetPeekHeight = sheetPeekHeight,
-                        sheetBackgroundColor = sheetBackgroundColor,
-                        sheetElevation = sheetElevation,
-                        sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
-                        sheetContent = {
-                            SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
+                    CompositionLocalProvider(LocalUiActor provides getUiActor()) {
+                        val sheetPeekHeight = 150.dp
+                        val sheetBackgroundColor =
+                            Color.White.copy(alpha = scaffoldState.expandFraction)
+                        val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
+                        BottomSheetScaffold(
+                            scaffoldState = scaffoldState,
+                            sheetPeekHeight = sheetPeekHeight,
+                            sheetBackgroundColor = sheetBackgroundColor,
+                            sheetElevation = sheetElevation,
+                            sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                            sheetContent = {
+                                SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
+                            }
+                        ) {
+                            CameraPreview()
                         }
-                    ) {
-                        CameraPreview()
                     }
                 }
-            }
+
+            })
+
         }
     }
 
@@ -257,4 +268,96 @@ class MainActivity : ComponentActivity() {
             modifier = Modifier.fillMaxSize(),
         )
     }
+
+    @OptIn(ExperimentalPermissionsApi::class)
+    @Composable
+    private fun FeatureThatRequiresCameraPermission(featureContent: @Composable () -> Unit) {
+
+        val navigateToSettingsScreen = {
+            startActivity(
+                Intent(
+                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                    Uri.fromParts("package", packageName, null)
+                )
+            )
+        }
+
+        var doNotShowRationale by rememberSaveable { mutableStateOf(false) }
+
+        val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
+        PermissionRequired(
+            permissionState = cameraPermissionState,
+            permissionNotGrantedContent = {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    if (doNotShowRationale) {
+                        Text("Feature not available", modifier = Modifier.align(Alignment.Center))
+                    } else {
+                        Text("Permission requesting", modifier = Modifier.align(Alignment.Center))
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.BottomCenter)
+                                .fillMaxWidth()
+                                .height(280.dp),
+                            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                            elevation = 8.dp
+                        ) {
+                            Column(modifier = Modifier.padding(20.dp)) {
+                                Text(
+                                    "The camera is important for this app. Please grant the permission.",
+                                    fontSize = 22.sp
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
+                                        Text("Ok!")
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Button(onClick = { doNotShowRationale = true }) {
+                                        Text("Nope")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            permissionNotAvailableContent = {
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Text("Permission denied", modifier = Modifier.align(Alignment.Center))
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .fillMaxWidth()
+                            .height(280.dp),
+                        shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                        elevation = 8.dp
+                    ) {
+                        Column(modifier = Modifier.padding(20.dp)) {
+                            Text(
+                                "Camera permission denied. See this FAQ with information about why we " +
+                                        "need this permission. Please, grant us access on the Settings screen.",
+                                fontSize = 22.sp
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.End
+                            ) {
+                                Button(onClick = navigateToSettingsScreen) {
+                                    Text("Open Settings")
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        ) {
+            featureContent()
+        }
+    }
 }
+
