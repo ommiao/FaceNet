@@ -4,17 +4,16 @@ import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +40,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
+import cn.ommiao.facenet.extension.clickableWithoutRipple
 import cn.ommiao.facenet.extension.expandFraction
 import cn.ommiao.facenet.extension.isSwitchCameraEnabled
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
@@ -55,6 +54,16 @@ sealed class UiAction {
 private val LocalUiActor = staticCompositionLocalOf<(UiAction) -> Unit> { error("Not provide") }
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModel: MainViewModel by viewModels()
+
+    private val faceAnalyzer: FaceAnalyzer =
+        FaceAnalyzer(
+            onFaceDetected = {}
+        ) {
+            viewModel.stopCollectFaces()
+        }
+
     @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -197,7 +206,6 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun ActionRow(height: Dp, alpha: Float) {
-        val viewModel: MainViewModel = viewModel()
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier
@@ -207,45 +215,41 @@ class MainActivity : ComponentActivity() {
                 .alpha(alpha),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = R.drawable.ic_switch),
-                contentDescription = "switch",
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(4.dp)
-                    .alpha(if (viewModel.isSwitchCameraEnabled) 1f else 0f)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {
-                        viewModel.switchCamera()
-                    },
-                contentScale = ContentScale.Crop
-            )
-            Image(
-                painter = painterResource(id = R.drawable.ic_shutter_normal),
-                contentDescription = "shutter",
-                modifier = Modifier
-                    .size(92.dp)
-                    .padding(4.dp),
-                contentScale = ContentScale.Crop
-            )
-            Image(
-                painter = painterResource(id = R.drawable.ic_switch),
-                contentDescription = "switch",
-                modifier = Modifier
-                    .size(64.dp)
-                    .padding(4.dp)
-                    .alpha(if (viewModel.isSwitchCameraEnabled) 1f else 0f)
-                    .clickable(
-                        indication = null,
-                        interactionSource = remember { MutableInteractionSource() }
-                    ) {
-                        viewModel.switchCamera()
-                    },
-                contentScale = ContentScale.Crop
-            )
+            SwitchCameraButton()
+            CaptureFaceButton()
+            SwitchCameraButton()
         }
+    }
+
+    @Composable
+    private fun CaptureFaceButton() {
+        Image(
+            painter = painterResource(id = R.drawable.ic_shutter_normal),
+            contentDescription = "shutter",
+            modifier = Modifier
+                .size(92.dp)
+                .padding(4.dp)
+                .clickableWithoutRipple {
+                    viewModel.startCollectFaces()
+                },
+            contentScale = ContentScale.Crop
+        )
+    }
+
+    @Composable
+    private fun SwitchCameraButton() {
+        Image(
+            painter = painterResource(id = R.drawable.ic_switch),
+            contentDescription = "switch",
+            modifier = Modifier
+                .size(64.dp)
+                .padding(4.dp)
+                .alpha(if (viewModel.isSwitchCameraEnabled) 1f else 0f)
+                .clickableWithoutRipple {
+                    viewModel.switchCamera()
+                },
+            contentScale = ContentScale.Crop
+        )
     }
 
 
@@ -254,7 +258,6 @@ class MainActivity : ComponentActivity() {
         val lifecycleOwner = LocalLifecycleOwner.current
         val context = LocalContext.current
         val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-        val viewModel: MainViewModel = viewModel()
         key(viewModel.lensFacing) {
             AndroidView(
                 factory = { ctx ->
@@ -308,10 +311,17 @@ class MainActivity : ComponentActivity() {
                 .requireLensFacing(viewModel.lensFacing)
                 .build()
 
+            val analyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .build().apply {
+                    setAnalyzer(executor, faceAnalyzer)
+                }
+
             cameraProvider.unbindAll()
             cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 cameraSelector,
+                analyzer,
                 preview
             )
         }, executor)
