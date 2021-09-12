@@ -7,15 +7,15 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,6 +40,12 @@ import cn.ommiao.facenet.extension.expandFraction
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 
+sealed class UiAction {
+
+}
+
+private val LocalUiActor = staticCompositionLocalOf<(UiAction) -> Unit> { error("Not provide") }
+
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterialApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -51,24 +57,41 @@ class MainActivity : ComponentActivity() {
                 systemUiController.isSystemBarsVisible = false
             }
             FaceNetTheme {
-                val sheetPeekHeight = 150.dp
-                val scaffoldState = rememberBottomSheetScaffoldState()
-                val sheetBackgroundColor = Color.White.copy(alpha = scaffoldState.expandFraction)
-                val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
-                BottomSheetScaffold(
-                    scaffoldState = scaffoldState,
-                    sheetPeekHeight = sheetPeekHeight,
-                    sheetBackgroundColor = sheetBackgroundColor,
-                    sheetElevation = sheetElevation,
-                    sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
-                    sheetContent = {
-                        SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
+                val scaffoldState = rememberBottomSheetScaffoldState(
+                    bottomSheetState = rememberBottomSheetState(
+                        initialValue = BottomSheetValue.Collapsed,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    )
+                )
+                CompositionLocalProvider(LocalUiActor provides getUiActor()) {
+                    val sheetPeekHeight = 150.dp
+                    val sheetBackgroundColor =
+                        Color.White.copy(alpha = scaffoldState.expandFraction)
+                    val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
+                    BottomSheetScaffold(
+                        scaffoldState = scaffoldState,
+                        sheetPeekHeight = sheetPeekHeight,
+                        sheetBackgroundColor = sheetBackgroundColor,
+                        sheetElevation = sheetElevation,
+                        sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                        sheetContent = {
+                            SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
+                        }
+                    ) {
+                        CameraPreview()
                     }
-                ) {
-                    CameraPreview()
                 }
             }
         }
+    }
+
+    @OptIn(ExperimentalMaterialApi::class)
+    @Composable
+    private fun getUiActor(): (UiAction) -> Unit {
+        return {}
     }
 
     @Composable
