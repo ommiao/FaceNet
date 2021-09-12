@@ -5,16 +5,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
+import cn.ommiao.facenet.model.DetectedFace
 
 class MainViewModel : ViewModel() {
 
-    private var _isCollectFacesOpened: Boolean = false
-    val isCollectFacesOpened: Boolean
-        get() = _isCollectFacesOpened
+    var isCollectFacesOpened: Boolean = false
+        private set
 
     var isSwitchCameraEnabled by mutableStateOf(false)
+    private set
 
     var lensFacing by mutableStateOf(CameraSelector.LENS_FACING_BACK)
+    private set
+
+    var detectedFaces by mutableStateOf(listOf<DetectedFace>())
 
     fun switchCamera() {
         if (isSwitchCameraEnabled) {
@@ -24,11 +28,16 @@ class MainViewModel : ViewModel() {
     }
 
     fun startCollectFaces() {
-        _isCollectFacesOpened = true
+        isCollectFacesOpened = true
     }
 
     fun stopCollectFaces() {
-        _isCollectFacesOpened = false
+        isCollectFacesOpened = false
+    }
+
+    fun initCameraLensFacing(isSwitchCameraEnabled: Boolean, lensFacing: Int){
+        this.isSwitchCameraEnabled = isSwitchCameraEnabled
+        this.lensFacing = lensFacing
     }
 
 }
