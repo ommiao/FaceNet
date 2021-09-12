@@ -1,9 +1,7 @@
 package cn.ommiao.facenet
 
-import android.content.Intent
-import android.net.Uri
+import android.content.Context
 import android.os.Bundle
-import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.camera.core.CameraSelector
@@ -13,13 +11,15 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -40,12 +40,13 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.LifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.ommiao.facenet.extension.expandFraction
+import cn.ommiao.facenet.extension.isSwitchCameraEnabled
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
-import com.google.accompanist.permissions.ExperimentalPermissionsApi
-import com.google.accompanist.permissions.PermissionRequired
-import com.google.accompanist.permissions.rememberPermissionState
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import com.google.common.util.concurrent.ListenableFuture
 
 sealed class UiAction {
 
@@ -63,38 +64,35 @@ class MainActivity : ComponentActivity() {
             SideEffect {
                 systemUiController.isSystemBarsVisible = false
             }
-            FeatureThatRequiresCameraPermission(featureContent = {
-                FaceNetTheme {
-                    val scaffoldState = rememberBottomSheetScaffoldState(
-                        bottomSheetState = rememberBottomSheetState(
-                            initialValue = BottomSheetValue.Collapsed,
-                            animationSpec = spring(
-                                dampingRatio = Spring.DampingRatioNoBouncy,
-                                stiffness = Spring.StiffnessLow
-                            )
+            FaceNetTheme {
+                val scaffoldState = rememberBottomSheetScaffoldState(
+                    bottomSheetState = rememberBottomSheetState(
+                        initialValue = BottomSheetValue.Collapsed,
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
                         )
                     )
-                    CompositionLocalProvider(LocalUiActor provides getUiActor()) {
-                        val sheetPeekHeight = 150.dp
-                        val sheetBackgroundColor =
-                            Color.White.copy(alpha = scaffoldState.expandFraction)
-                        val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
-                        BottomSheetScaffold(
-                            scaffoldState = scaffoldState,
-                            sheetPeekHeight = sheetPeekHeight,
-                            sheetBackgroundColor = sheetBackgroundColor,
-                            sheetElevation = sheetElevation,
-                            sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
-                            sheetContent = {
-                                SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
-                            }
-                        ) {
-                            CameraPreview()
+                )
+                CompositionLocalProvider(LocalUiActor provides getUiActor()) {
+                    val sheetPeekHeight = 150.dp
+                    val sheetBackgroundColor =
+                        Color.White.copy(alpha = scaffoldState.expandFraction)
+                    val sheetElevation = if (scaffoldState.expandFraction == 1f) 8.dp else 0.dp
+                    BottomSheetScaffold(
+                        scaffoldState = scaffoldState,
+                        sheetPeekHeight = sheetPeekHeight,
+                        sheetBackgroundColor = sheetBackgroundColor,
+                        sheetElevation = sheetElevation,
+                        sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
+                        sheetContent = {
+                            SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
                         }
+                    ) {
+                        CameraPreview()
                     }
                 }
-
-            })
+            }
 
         }
     }
@@ -199,6 +197,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun ActionRow(height: Dp, alpha: Float) {
+        val viewModel: MainViewModel = viewModel()
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier
@@ -213,7 +212,14 @@ class MainActivity : ComponentActivity() {
                 contentDescription = "switch",
                 modifier = Modifier
                     .size(64.dp)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .alpha(if (viewModel.isSwitchCameraEnabled) 1f else 0f)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        viewModel.switchCamera()
+                    },
                 contentScale = ContentScale.Crop
             )
             Image(
@@ -226,10 +232,17 @@ class MainActivity : ComponentActivity() {
             )
             Image(
                 painter = painterResource(id = R.drawable.ic_switch),
-                contentDescription = "faces",
+                contentDescription = "switch",
                 modifier = Modifier
                     .size(64.dp)
-                    .padding(4.dp),
+                    .padding(4.dp)
+                    .alpha(if (viewModel.isSwitchCameraEnabled) 1f else 0f)
+                    .clickable(
+                        indication = null,
+                        interactionSource = remember { MutableInteractionSource() }
+                    ) {
+                        viewModel.switchCamera()
+                    },
                 contentScale = ContentScale.Crop
             )
         }
@@ -241,123 +254,67 @@ class MainActivity : ComponentActivity() {
         val lifecycleOwner = LocalLifecycleOwner.current
         val context = LocalContext.current
         val cameraProviderFuture = remember { ProcessCameraProvider.getInstance(context) }
-
-        AndroidView(
-            factory = { ctx ->
-                val previewView = PreviewView(ctx)
-                val executor = ContextCompat.getMainExecutor(ctx)
-                cameraProviderFuture.addListener({
-                    val cameraProvider = cameraProviderFuture.get()
-                    val preview = Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-
-                    val cameraSelector = CameraSelector.Builder()
-                        .requireLensFacing(CameraSelector.LENS_FACING_BACK)
-                        .build()
-
-                    cameraProvider.unbindAll()
-                    cameraProvider.bindToLifecycle(
-                        lifecycleOwner,
-                        cameraSelector,
-                        preview
+        val viewModel: MainViewModel = viewModel()
+        key(viewModel.lensFacing) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
+                    bindCameraUseCases(
+                        ctx,
+                        cameraProviderFuture,
+                        previewView,
+                        viewModel,
+                        lifecycleOwner
                     )
-                }, executor)
-                previewView
-            },
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-
-    @OptIn(ExperimentalPermissionsApi::class)
-    @Composable
-    private fun FeatureThatRequiresCameraPermission(featureContent: @Composable () -> Unit) {
-
-        val navigateToSettingsScreen = {
-            startActivity(
-                Intent(
-                    Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.fromParts("package", packageName, null)
-                )
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize(),
+                update = { previewView ->
+                    bindCameraUseCases(
+                        previewView.context,
+                        cameraProviderFuture,
+                        previewView,
+                        viewModel,
+                        lifecycleOwner
+                    )
+                }
             )
         }
+    }
 
-        var doNotShowRationale by rememberSaveable { mutableStateOf(false) }
-
-        val cameraPermissionState = rememberPermissionState(android.Manifest.permission.CAMERA)
-        PermissionRequired(
-            permissionState = cameraPermissionState,
-            permissionNotGrantedContent = {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    if (doNotShowRationale) {
-                        Text("Feature not available", modifier = Modifier.align(Alignment.Center))
-                    } else {
-                        Text("Permission requesting", modifier = Modifier.align(Alignment.Center))
-                        Surface(
-                            modifier = Modifier
-                                .align(Alignment.BottomCenter)
-                                .fillMaxWidth()
-                                .height(280.dp),
-                            shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
-                            elevation = 8.dp
-                        ) {
-                            Column(modifier = Modifier.padding(20.dp)) {
-                                Text(
-                                    "The camera is important for this app. Please grant the permission.",
-                                    fontSize = 22.sp
-                                )
-                                Spacer(modifier = Modifier.weight(1f))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.End
-                                ) {
-                                    Button(onClick = { cameraPermissionState.launchPermissionRequest() }) {
-                                        Text("Ok!")
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Button(onClick = { doNotShowRationale = true }) {
-                                        Text("Nope")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            permissionNotAvailableContent = {
-                Box(modifier = Modifier.fillMaxSize()) {
-                    Text("Permission denied", modifier = Modifier.align(Alignment.Center))
-                    Surface(
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .fillMaxWidth()
-                            .height(280.dp),
-                        shape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
-                        elevation = 8.dp
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp)) {
-                            Text(
-                                "Camera permission denied. See this FAQ with information about why we " +
-                                        "need this permission. Please, grant us access on the Settings screen.",
-                                fontSize = 22.sp
-                            )
-                            Spacer(modifier = Modifier.weight(1f))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                Button(onClick = navigateToSettingsScreen) {
-                                    Text("Open Settings")
-                                }
-                            }
-                        }
-                    }
-
+    private fun bindCameraUseCases(
+        ctx: Context,
+        cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
+        previewView: PreviewView,
+        viewModel: MainViewModel,
+        lifecycleOwner: LifecycleOwner
+    ) {
+        val executor = ContextCompat.getMainExecutor(ctx)
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+            viewModel.isSwitchCameraEnabled = cameraProvider.isSwitchCameraEnabled
+            if (!cameraProvider.isSwitchCameraEnabled) {
+                if (cameraProvider.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA)) {
+                    viewModel.lensFacing = CameraSelector.LENS_FACING_FRONT
+                } else if (cameraProvider.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA)) {
+                    viewModel.lensFacing = CameraSelector.LENS_FACING_BACK
                 }
             }
-        ) {
-            featureContent()
-        }
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
+
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(viewModel.lensFacing)
+                .build()
+
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                preview
+            )
+        }, executor)
     }
 }
 
