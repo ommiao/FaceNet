@@ -1,6 +1,7 @@
 package cn.ommiao.facenet
 
 import android.os.Bundle
+import android.view.OrientationEventListener
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -23,15 +24,48 @@ import cn.ommiao.facenet.ui.composable.SheetContent
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.common.util.concurrent.ListenableFuture
+import android.view.Surface
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private val faceAnalyzer = FaceAnalyzer(onFaceDetected = {
-        viewModel.detectedFaces = it
-    }) {
+    private val faceAnalyzer = FaceAnalyzer(
+        onFaceDetected = {
+            viewModel.detectedFaces = it
+        }) {
         viewModel.stopCollectFaces()
+    }
+
+    private val orientationEventListener by lazy {
+
+        object : OrientationEventListener(this) {
+
+            override fun onOrientationChanged(orientation: Int) {
+                if (orientation == ORIENTATION_UNKNOWN) {
+                    return
+                }
+                val rotation = when (orientation) {
+                    in 45 until 135 -> Surface.ROTATION_270
+                    in 135 until 225 -> Surface.ROTATION_180
+                    in 225 until 315 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+                viewModel.cameraOrientationChanged(rotation)
+            }
+
+        }
+
+    }
+
+    override fun onStart() {
+        super.onStart()
+        orientationEventListener.enable()
+    }
+
+    override fun onStop() {
+        super.onStop()
+        orientationEventListener.disable()
     }
 
     @OptIn(ExperimentalMaterialApi::class)

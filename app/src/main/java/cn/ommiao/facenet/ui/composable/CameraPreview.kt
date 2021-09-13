@@ -11,6 +11,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -29,6 +30,7 @@ fun CameraPreview(
         remember { ProcessCameraProvider.getInstance(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val viewModel: MainViewModel = viewModel()
+    val metrics = LocalConfiguration.current.screenHeightDp
     key(viewModel.lensFacing) {
         AndroidView(
             factory = { ctx ->
@@ -39,6 +41,7 @@ fun CameraPreview(
                     previewView,
                     lifecycleOwner,
                     viewModel.lensFacing,
+                    viewModel.cameraRotation,
                     faceAnalyzer
                 )
                 previewView
@@ -54,31 +57,40 @@ private fun bindCameraUseCases(
     previewView: PreviewView,
     lifecycleOwner: LifecycleOwner,
     lensFacing: Int,
+    cameraRotation: Int,
     faceAnalyzer: ImageAnalysis.Analyzer
 ) {
     val executor = ContextCompat.getMainExecutor(ctx)
-    cameraProviderFuture.addListener({
-        val cameraProvider = cameraProviderFuture.get()
-        val preview = Preview.Builder().build().also {
-            it.setSurfaceProvider(previewView.surfaceProvider)
-        }
 
-        val cameraSelector = CameraSelector.Builder()
-            .requireLensFacing(lensFacing)
-            .build()
+    cameraProviderFuture.addListener(
+        {
+            val cameraProvider = cameraProviderFuture.get()
 
-        val analyzer = ImageAnalysis.Builder()
-            .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-            .build().apply {
-                setAnalyzer(executor, faceAnalyzer)
-            }
+            val preview = Preview.Builder()
+                .setTargetRotation(cameraRotation)
+                .build().also {
+                    it.setSurfaceProvider(previewView.surfaceProvider)
+                }
 
-        cameraProvider.unbindAll()
-        cameraProvider.bindToLifecycle(
-            lifecycleOwner,
-            cameraSelector,
-            analyzer,
-            preview
-        )
-    }, executor)
+            val cameraSelector = CameraSelector.Builder()
+                .requireLensFacing(lensFacing)
+                .build()
+
+            val analyzer = ImageAnalysis.Builder()
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setTargetRotation(cameraRotation)
+                .build().apply {
+                    setAnalyzer(executor, faceAnalyzer)
+                }
+
+            cameraProvider.unbindAll()
+            cameraProvider.bindToLifecycle(
+                lifecycleOwner,
+                cameraSelector,
+                analyzer,
+                preview
+            )
+        },
+        executor
+    )
 }

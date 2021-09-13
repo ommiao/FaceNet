@@ -1,5 +1,6 @@
 package cn.ommiao.facenet
 
+import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,6 +17,9 @@ class MainViewModel : ViewModel() {
     private set
 
     var lensFacing by mutableStateOf(CameraSelector.LENS_FACING_BACK)
+    private set
+
+    var cameraRotation by mutableStateOf(Surface.ROTATION_0)
     private set
 
     var detectedFaces by mutableStateOf(listOf<DetectedFace>())
@@ -38,6 +42,10 @@ class MainViewModel : ViewModel() {
     fun initCameraLensFacing(isSwitchCameraEnabled: Boolean, lensFacing: Int){
         this.isSwitchCameraEnabled = isSwitchCameraEnabled
         this.lensFacing = lensFacing
+    }
+
+    fun cameraOrientationChanged(orientation: Int){
+        cameraRotation = orientation
     }
 
 }
