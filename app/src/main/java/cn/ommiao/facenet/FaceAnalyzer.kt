@@ -2,52 +2,87 @@ package cn.ommiao.facenet
 
 import android.graphics.*
 import android.os.Environment
+import android.util.Size
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import cn.ommiao.facenet.face.MTCNN
+import cn.ommiao.facenet.face.Utils
 import cn.ommiao.facenet.model.DetectedFace
 import cn.ommiao.facenet.model.FaceFeature
-import cn.ommiao.facenet.model.FaceRect
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
 class FaceAnalyzer(
+    private val screenSize: Size,
+    private val mtcnn: MTCNN,
     private val onFaceDetected: (List<DetectedFace>) -> Unit,
     private val onAnalyseFinished: () -> Unit
 ) : ImageAnalysis.Analyzer {
 
     override fun analyze(image: ImageProxy) {
 
-        savePreviewImage(image)
+        image.convertImageProxyToBitmap()?.let { bitmap ->
+            val faceList = mutableListOf<DetectedFace>()
+            val faceBoxes = mtcnn.detectFaces(bitmap, 40)
+            faceBoxes.forEach { box ->
+                val rect: Rect = box.transform2Rect()
+                Utils.rectExtend(bitmap, rect, 5)
 
-        image.close()
+                Utils.drawRect(bitmap, rect, 3)
 
-        onFaceDetected(
-            listOf(
-                DetectedFace(
-                    faceFeature = FaceFeature(label = "mockName"),
-                    faceRect = FaceRect(
-                        300, 500, 600, 900
+//                val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
+//                saveBitmap(bitmapFaceCropped, System.currentTimeMillis().toString())
+
+                convertToScreenSize(
+                    rect = rect,
+                    imageWidth = bitmap.width,
+                    imageHeight = bitmap.height
+                )
+
+                faceList.add(
+                    DetectedFace(
+                        faceRect = rect,
+                        faceFeature = FaceFeature()
                     )
                 )
-            )
-        )
+
+                onFaceDetected(faceList)
+            }
+        }
+
+        image.close()
 
         onAnalyseFinished()
     }
 
-    private fun savePreviewImage(image: ImageProxy) {
-        image.convertImageProxyToBitmap()?.let { bitmap ->
-            val file = File(
-                Environment.getExternalStorageDirectory(),
-                "/Download/FaceNet/preview-${image.imageInfo.timestamp}.jpg"
-            )
-            file.parentFile?.mkdirs()
-            file.createNewFile()
-            val fos = FileOutputStream(file)
-            fos.use {
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
+    private fun convertToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {
+        with(screenSize) {
+            val screenRatio = width.toFloat() / height.toFloat()
+            val imageRatio = imageWidth.toFloat() / imageHeight.toFloat()
+            if (imageRatio > screenRatio) {
+                val scaleRatio = height.toFloat() / imageHeight.toFloat()
+                val targetImageWidth = scaleRatio * imageWidth
+                with(rect) {
+                    left = (left * scaleRatio - (targetImageWidth - width) / 2).toInt()
+                    top = (top * scaleRatio).toInt()
+                    right = (right * scaleRatio - (targetImageWidth - width) / 2).toInt()
+                    bottom = (bottom * scaleRatio).toInt()
+                }
             }
+        }
+    }
+
+    private fun saveBitmap(bitmap: Bitmap, name: String) {
+        val file = File(
+            Environment.getExternalStorageDirectory(),
+            "/Download/FaceNet/${name}.jpg"
+        )
+        file.parentFile?.mkdirs()
+        file.createNewFile()
+        val fos = FileOutputStream(file)
+        fos.use {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 100, it)
         }
     }
 

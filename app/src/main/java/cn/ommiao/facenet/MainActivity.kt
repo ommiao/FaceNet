@@ -1,6 +1,7 @@
 package cn.ommiao.facenet
 
 import android.os.Bundle
+import android.util.Size
 import android.view.OrientationEventListener
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -25,17 +26,16 @@ import cn.ommiao.facenet.ui.theme.FaceNetTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.common.util.concurrent.ListenableFuture
 import android.view.Surface
+import androidx.window.WindowManager
+import cn.ommiao.facenet.face.MTCNN
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private val faceAnalyzer = FaceAnalyzer(
-        onFaceDetected = {
-            viewModel.detectedFaces = it
-        }) {
-        viewModel.stopCollectFaces()
-    }
+    private lateinit var mtcnn: MTCNN
+
+    private var faceAnalyzer:FaceAnalyzer? = null
 
     private val orientationEventListener by lazy {
 
@@ -66,6 +66,21 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         super.onStop()
         orientationEventListener.disable()
+    }
+
+    private fun getFaceAnalyzer(): FaceAnalyzer {
+        val screenRect = WindowManager(this).getCurrentWindowMetrics().bounds
+        return faceAnalyzer ?: FaceAnalyzer(
+            screenSize = Size(screenRect.width(), screenRect.height()),
+            mtcnn = MTCNN(assets),
+            onFaceDetected = {
+                viewModel.detectedFaces = it
+            }) {
+            viewModel.stopCollectFaces()
+        }.apply {
+            println("--------FaceAnalyzer")
+            faceAnalyzer = this
+        }
     }
 
     @OptIn(ExperimentalMaterialApi::class)
@@ -102,7 +117,7 @@ class MainActivity : ComponentActivity() {
                     }
                 ) {
                     Box {
-                        CameraPreview(faceAnalyzer)
+                        CameraPreview(getFaceAnalyzer())
                         DetectedFacesView(viewModel.detectedFaces)
                     }
                 }

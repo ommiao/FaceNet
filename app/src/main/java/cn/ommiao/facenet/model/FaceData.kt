@@ -1,18 +1,24 @@
 package cn.ommiao.facenet.model
 
+import android.graphics.Rect
+import kotlin.math.sqrt
+
 data class DetectedFace(
-    val faceRect: FaceRect,
+    val faceRect: Rect,
     val faceFeature: FaceFeature
 )
 
-data class FaceRect(
-    val left:Int,
-    val top: Int,
-    val right: Int,
-    val bottom: Int
-)
-
+const val DIMS = 512
 data class FaceFeature(
     val label: String = "Unknown",
-    val feature:FloatArray = FloatArray(512)
-)
+    val feature: FloatArray = FloatArray(DIMS)
+) {
+
+    fun similarWith(other: FaceFeature): Double {
+        val dist = feature.indices.sumOf { i ->
+            ((feature[i] - other.feature[i]) * (feature[i] - other.feature[i])).toDouble()
+        }
+        return sqrt(dist)
+    }
+
+}

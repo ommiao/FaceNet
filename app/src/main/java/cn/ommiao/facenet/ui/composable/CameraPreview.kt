@@ -1,6 +1,7 @@
 package cn.ommiao.facenet.ui.composable
 
 import android.content.Context
+import android.os.AsyncTask
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -80,7 +81,7 @@ private fun bindCameraUseCases(
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setTargetRotation(cameraRotation)
                 .build().apply {
-                    setAnalyzer(executor, faceAnalyzer)
+                    setAnalyzer(AsyncTask.THREAD_POOL_EXECUTOR, faceAnalyzer)
                 }
 
             cameraProvider.unbindAll()
