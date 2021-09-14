@@ -19,12 +19,13 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import cn.ommiao.facenet.FaceAnalyzer
 import cn.ommiao.facenet.MainViewModel
 import com.google.common.util.concurrent.ListenableFuture
 
 @Composable
 fun CameraPreview(
-    faceAnalyzer: ImageAnalysis.Analyzer
+    faceAnalyzer: FaceAnalyzer
 ) {
     val context = LocalContext.current
     val cameraProviderFuture =
@@ -52,6 +53,7 @@ fun CameraPreview(
     }
 }
 
+@Suppress("DEPRECATION")
 private fun bindCameraUseCases(
     ctx: Context,
     cameraProviderFuture: ListenableFuture<ProcessCameraProvider>,
@@ -59,7 +61,7 @@ private fun bindCameraUseCases(
     lifecycleOwner: LifecycleOwner,
     lensFacing: Int,
     cameraRotation: Int,
-    faceAnalyzer: ImageAnalysis.Analyzer
+    faceAnalyzer: FaceAnalyzer
 ) {
     val executor = ContextCompat.getMainExecutor(ctx)
 
@@ -81,7 +83,11 @@ private fun bindCameraUseCases(
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setTargetRotation(cameraRotation)
                 .build().apply {
-                    setAnalyzer(AsyncTask.THREAD_POOL_EXECUTOR, faceAnalyzer)
+                    setAnalyzer(AsyncTask.THREAD_POOL_EXECUTOR,
+                        faceAnalyzer.apply {
+                            this.lensFacing = lensFacing
+                        }
+                    )
                 }
 
             cameraProvider.unbindAll()

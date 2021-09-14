@@ -33,8 +33,6 @@ class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private lateinit var mtcnn: MTCNN
-
     private var faceAnalyzer:FaceAnalyzer? = null
 
     private val orientationEventListener by lazy {
