@@ -4,6 +4,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.Card
 import androidx.compose.material.Text
@@ -25,8 +26,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.ommiao.facenet.MainViewModel
-import cn.ommiao.facenet.extension.clickableWithoutRipple
 import cn.ommiao.facenet.R
+import cn.ommiao.facenet.extension.clickableWithoutRipple
+import com.skydoves.landscapist.glide.GlideImage
 
 @Composable
 fun SheetContent(actionRowHeight: Dp, expandFraction: Float, onCaptureFaceClick: () -> Unit) {
@@ -53,9 +55,8 @@ private fun FacesSurface(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         FacesSurfaceSpinner(expandFraction, offsetY)
-        val facesSize = 10
-        FacesSurfaceTitle(facesSize, offsetY * 1.25f)
-        FacesLazyRow(facesSize, offsetY * 1.5f)
+        FacesSurfaceTitle(offsetY * 1.25f)
+        FacesLazyRow(offsetY * 1.5f)
     }
 }
 
@@ -73,14 +74,27 @@ private fun FacesSurfaceSpinner(expandFraction: Float, offsetY: Dp) {
 }
 
 @Composable
-private fun FacesLazyRow(facesSize: Int, offsetY: Dp) {
-    LazyRow(
-        modifier = Modifier.offset(y = offsetY),
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-        contentPadding = PaddingValues(bottom = 20.dp, start = 20.dp, end = 20.dp)
-    ) {
-        repeat(facesSize) {
-            item {
+private fun FacesLazyRow(offsetY: Dp) {
+    val viewModel: MainViewModel = viewModel()
+    val savedFaces = viewModel.savedFaces
+    if (savedFaces.isEmpty()) {
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+        ) {
+            Text(
+                text = "Empty",
+                modifier = Modifier.align(Alignment.Center)
+            )
+        }
+    } else {
+        LazyRow(
+            modifier = Modifier.offset(y = offsetY),
+            horizontalArrangement = Arrangement.spacedBy(20.dp),
+            contentPadding = PaddingValues(bottom = 20.dp, start = 20.dp, end = 20.dp)
+        ) {
+            items(savedFaces) {
                 Card(
                     modifier = Modifier
                         .fillMaxHeight()
@@ -88,9 +102,14 @@ private fun FacesLazyRow(facesSize: Int, offsetY: Dp) {
                     shape = RoundedCornerShape(25.dp),
                     elevation = 2.dp
                 ) {
+                    GlideImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModel = it.filePath,
+                        contentScale = ContentScale.Crop
+                    )
                     Box {
                         Text(
-                            text = "Face",
+                            text = it.label,
                             modifier = Modifier.align(Alignment.Center)
                         )
                     }
@@ -101,7 +120,9 @@ private fun FacesLazyRow(facesSize: Int, offsetY: Dp) {
 }
 
 @Composable
-private fun FacesSurfaceTitle(facesSize: Int, offsetY: Dp) {
+private fun FacesSurfaceTitle(offsetY: Dp) {
+    val viewModel: MainViewModel = viewModel()
+    val facesSize = viewModel.savedFaces.size
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(fontSize = 20.sp)) {
@@ -152,7 +173,7 @@ private fun CaptureFaceButton(onClick: () -> Unit) {
 
 @Composable
 private fun SwitchCameraButton() {
-    val viewModel:MainViewModel = viewModel()
+    val viewModel: MainViewModel = viewModel()
     Image(
         painter = painterResource(id = R.drawable.ic_switch),
         contentDescription = "switch",

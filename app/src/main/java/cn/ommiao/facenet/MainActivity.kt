@@ -75,6 +75,7 @@ class MainActivity : ComponentActivity() {
             onFaceDetected = {
                 viewModel.detectedFaces = it
             }) {
+            viewModel.addSavedFaces(it)
             showSavedToast(it.size)
         }.apply {
             faceAnalyzer = this
@@ -91,6 +92,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        viewModel.initDatabase(this)
+        viewModel.initSavedFaces()
         setContent {
             SystemUiController()
             FaceNetTheme {

@@ -28,6 +28,8 @@ class FaceAnalyzer(
 
     var captureNextFaces = false
 
+    private var captureTryTimes = 0
+
     private lateinit var mtcnn: MTCNN
 
     private lateinit var facenet: Facenet
@@ -44,6 +46,10 @@ class FaceAnalyzer(
         val liveFacesList = mutableListOf<DetectedFace>()
 
         val savedFacesList = mutableListOf<SavedFace>()
+
+        if (captureNextFaces) {
+            captureTryTimes += 1
+        }
 
         image.convertImageProxyToBitmap()?.let { bitmap ->
             val faceBoxes = mtcnn.detectFaces(bitmap, 40)
@@ -89,7 +95,10 @@ class FaceAnalyzer(
             onFaceSaved(savedFacesList)
         }
 
-        captureNextFaces = false
+        if (savedFacesList.isNotEmpty() || captureTryTimes >= 5){
+            captureTryTimes = 0
+            captureNextFaces = false
+        }
     }
 
     private fun convertToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {
