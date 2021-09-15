@@ -22,3 +22,8 @@ data class FaceFeature(
     }
 
 }
+
+data class SavedFace(
+    val label: String,
+    val filePath: String
+)

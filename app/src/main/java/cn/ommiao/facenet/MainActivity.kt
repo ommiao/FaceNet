@@ -3,6 +3,9 @@ package cn.ommiao.facenet
 import android.os.Bundle
 import android.util.Size
 import android.view.OrientationEventListener
+import android.view.Surface
+import android.widget.Toast
+import android.widget.Toast.LENGTH_SHORT
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
@@ -17,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import androidx.window.WindowManager
 import cn.ommiao.facenet.extension.expandFraction
 import cn.ommiao.facenet.extension.isSwitchCameraEnabled
 import cn.ommiao.facenet.ui.composable.CameraPreview
@@ -25,15 +29,12 @@ import cn.ommiao.facenet.ui.composable.SheetContent
 import cn.ommiao.facenet.ui.theme.FaceNetTheme
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.google.common.util.concurrent.ListenableFuture
-import android.view.Surface
-import androidx.window.WindowManager
-import cn.ommiao.facenet.face.MTCNN
 
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels()
 
-    private var faceAnalyzer:FaceAnalyzer? = null
+    private var faceAnalyzer: FaceAnalyzer? = null
 
     private val orientationEventListener by lazy {
 
@@ -70,14 +71,19 @@ class MainActivity : ComponentActivity() {
         val screenRect = WindowManager(this).getCurrentWindowMetrics().bounds
         return faceAnalyzer ?: FaceAnalyzer(
             screenSize = Size(screenRect.width(), screenRect.height()),
-            mtcnn = MTCNN(assets),
+            assetManager = assets,
             onFaceDetected = {
                 viewModel.detectedFaces = it
             }) {
-            viewModel.stopCollectFaces()
+            showSavedToast(it.size)
         }.apply {
-            println("--------FaceAnalyzer")
             faceAnalyzer = this
+        }
+    }
+
+    private fun showSavedToast(size: Int) {
+        runOnUiThread {
+            Toast.makeText(this, "$size face(s) saved.", LENGTH_SHORT).show()
         }
     }
 
@@ -111,7 +117,9 @@ class MainActivity : ComponentActivity() {
                     sheetElevation = sheetElevation,
                     sheetShape = RoundedCornerShape(topStart = 40.dp, topEnd = 40.dp),
                     sheetContent = {
-                        SheetContent(sheetPeekHeight, scaffoldState.expandFraction)
+                        SheetContent(sheetPeekHeight, scaffoldState.expandFraction) {
+                            faceAnalyzer?.captureNextFaces = true
+                        }
                     }
                 ) {
                     Box {

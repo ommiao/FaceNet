@@ -1,31 +1,49 @@
 package cn.ommiao.facenet
 
+import android.content.res.AssetManager
 import android.graphics.*
 import android.os.Environment
 import android.util.Size
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import cn.ommiao.facenet.face.Facenet
 import cn.ommiao.facenet.face.MTCNN
 import cn.ommiao.facenet.face.Utils
 import cn.ommiao.facenet.model.DetectedFace
 import cn.ommiao.facenet.model.FaceFeature
+import cn.ommiao.facenet.model.SavedFace
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
 
 class FaceAnalyzer(
     private val screenSize: Size,
-    private val mtcnn: MTCNN,
+    private val assetManager: AssetManager,
     private val onFaceDetected: (List<DetectedFace>) -> Unit,
-    private val onAnalyseFinished: () -> Unit
+    private val onFaceSaved: (List<SavedFace>) -> Unit
 ) : ImageAnalysis.Analyzer {
 
     var lensFacing = CameraSelector.LENS_FACING_BACK
 
+    var captureNextFaces = false
+
+    private lateinit var mtcnn: MTCNN
+
+    private lateinit var facenet: Facenet
+
     override fun analyze(image: ImageProxy) {
 
-        val faceList = mutableListOf<DetectedFace>()
+        if (this::mtcnn.isInitialized.not() || this::facenet.isInitialized.not()) {
+            mtcnn = MTCNN(assetManager)
+            facenet = Facenet(assetManager)
+            image.close()
+            return
+        }
+
+        val liveFacesList = mutableListOf<DetectedFace>()
+
+        val savedFacesList = mutableListOf<SavedFace>()
 
         image.convertImageProxyToBitmap()?.let { bitmap ->
             val faceBoxes = mtcnn.detectFaces(bitmap, 40)
@@ -33,10 +51,19 @@ class FaceAnalyzer(
                 val rect: Rect = box.transform2Rect()
                 Utils.rectExtend(bitmap, rect, 5)
 
-                Utils.drawRect(bitmap, rect, 3)
-
-//                val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
-//                saveBitmap(bitmapFaceCropped, System.currentTimeMillis().toString())
+                if (captureNextFaces) {
+                    val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
+                    val name = System.currentTimeMillis().toString()
+                    val path =
+                        "${Environment.getExternalStorageDirectory()}/Download/FaceNet/${name}.jpg"
+                    saveBitmap(bitmapFaceCropped, path)
+                    savedFacesList.add(
+                        SavedFace(
+                            label = "None",
+                            filePath = path
+                        )
+                    )
+                }
 
                 convertToScreenSize(
                     rect = rect,
@@ -44,7 +71,7 @@ class FaceAnalyzer(
                     imageHeight = bitmap.height
                 )
 
-                faceList.add(
+                liveFacesList.add(
                     DetectedFace(
                         faceRect = rect,
                         faceFeature = FaceFeature()
@@ -54,11 +81,15 @@ class FaceAnalyzer(
             }
         }
 
-        onFaceDetected(faceList)
+        onFaceDetected(liveFacesList)
 
         image.close()
 
-        onAnalyseFinished()
+        if (captureNextFaces) {
+            onFaceSaved(savedFacesList)
+        }
+
+        captureNextFaces = false
     }
 
     private fun convertToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {
@@ -82,11 +113,8 @@ class FaceAnalyzer(
         }
     }
 
-    private fun saveBitmap(bitmap: Bitmap, name: String) {
-        val file = File(
-            Environment.getExternalStorageDirectory(),
-            "/Download/FaceNet/${name}.jpg"
-        )
+    private fun saveBitmap(bitmap: Bitmap, path: String) {
+        val file = File(path)
         file.parentFile?.mkdirs()
         file.createNewFile()
         val fos = FileOutputStream(file)

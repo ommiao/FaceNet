@@ -29,12 +29,12 @@ import cn.ommiao.facenet.extension.clickableWithoutRipple
 import cn.ommiao.facenet.R
 
 @Composable
-fun SheetContent(actionRowHeight: Dp, expandFraction: Float) {
+fun SheetContent(actionRowHeight: Dp, expandFraction: Float, onCaptureFaceClick: () -> Unit) {
     val sheetContentHeight = 350.dp
     val offsetY = actionRowHeight * (1 - expandFraction)
     val actionRowAlpha = 1.0f * (1 - expandFraction * 3f)
     Box(modifier = Modifier.height(sheetContentHeight)) {
-        ActionRow(actionRowHeight, actionRowAlpha)
+        ActionRow(actionRowHeight, actionRowAlpha, onCaptureFaceClick)
         FacesSurface(offsetY, sheetContentHeight, expandFraction)
     }
 }
@@ -121,7 +121,7 @@ private fun FacesSurfaceTitle(facesSize: Int, offsetY: Dp) {
 }
 
 @Composable
-private fun ActionRow(height: Dp, alpha: Float) {
+private fun ActionRow(height: Dp, alpha: Float, onCaptureFaceClick: () -> Unit) {
     Row(
         horizontalArrangement = Arrangement.SpaceEvenly,
         modifier = Modifier
@@ -132,23 +132,20 @@ private fun ActionRow(height: Dp, alpha: Float) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         SwitchCameraButton()
-        CaptureFaceButton()
+        CaptureFaceButton(onCaptureFaceClick)
         SwitchCameraButton()
     }
 }
 
 @Composable
-private fun CaptureFaceButton() {
-    val viewModel:MainViewModel = viewModel()
+private fun CaptureFaceButton(onClick: () -> Unit) {
     Image(
         painter = painterResource(id = R.drawable.ic_shutter_normal),
         contentDescription = "shutter",
         modifier = Modifier
             .size(92.dp)
             .padding(4.dp)
-            .clickableWithoutRipple {
-                viewModel.startCollectFaces()
-            },
+            .clickableWithoutRipple(onClick = onClick),
         contentScale = ContentScale.Crop
     )
 }

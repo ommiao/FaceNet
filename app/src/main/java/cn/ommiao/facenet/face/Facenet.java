@@ -25,7 +25,7 @@ public class Facenet {
     private final AssetManager assetManager;
     private TensorFlowInferenceInterface inferenceInterface;
 
-    Facenet(AssetManager mgr) {
+    public Facenet(AssetManager mgr) {
         assetManager = mgr;
         loadModel();
         floatValues = new float[INPUT_SIZE * INPUT_SIZE * 3];
