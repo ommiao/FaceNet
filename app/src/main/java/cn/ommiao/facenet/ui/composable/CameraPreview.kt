@@ -2,6 +2,7 @@ package cn.ommiao.facenet.ui.composable
 
 import android.content.Context
 import android.os.AsyncTask
+import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -32,7 +33,6 @@ fun CameraPreview(
         remember { ProcessCameraProvider.getInstance(context) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val viewModel: MainViewModel = viewModel()
-    val metrics = LocalConfiguration.current.screenHeightDp
     key(viewModel.lensFacing) {
         AndroidView(
             factory = { ctx ->
@@ -43,7 +43,6 @@ fun CameraPreview(
                     previewView,
                     lifecycleOwner,
                     viewModel.lensFacing,
-                    viewModel.cameraRotation,
                     faceAnalyzer
                 )
                 previewView
@@ -60,7 +59,6 @@ private fun bindCameraUseCases(
     previewView: PreviewView,
     lifecycleOwner: LifecycleOwner,
     lensFacing: Int,
-    cameraRotation: Int,
     faceAnalyzer: FaceAnalyzer
 ) {
     val executor = ContextCompat.getMainExecutor(ctx)
@@ -70,7 +68,7 @@ private fun bindCameraUseCases(
             val cameraProvider = cameraProviderFuture.get()
 
             val preview = Preview.Builder()
-                .setTargetRotation(cameraRotation)
+                .setTargetRotation(Surface.ROTATION_0)
                 .build().also {
                     it.setSurfaceProvider(previewView.surfaceProvider)
                 }
@@ -81,7 +79,7 @@ private fun bindCameraUseCases(
 
             val analyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                .setTargetRotation(cameraRotation)
+                .setTargetRotation(Surface.ROTATION_0)
                 .build().apply {
                     setAnalyzer(AsyncTask.THREAD_POOL_EXECUTOR,
                         faceAnalyzer.apply {

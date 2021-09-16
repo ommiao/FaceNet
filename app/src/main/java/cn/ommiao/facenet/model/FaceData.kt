@@ -41,7 +41,7 @@ interface SavedFaceDao {
     fun update(face: SavedFace)
 }
 
-@Database(entities = [SavedFace::class], version = 1)
+@Database(entities = [SavedFace::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun savedFaceDao(): SavedFaceDao

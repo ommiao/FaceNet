@@ -34,16 +34,22 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import cn.ommiao.facenet.MainViewModel
 import cn.ommiao.facenet.R
 import cn.ommiao.facenet.extension.clickableWithoutRipple
+import com.google.accompanist.insets.ProvideWindowInsets
+import com.google.accompanist.insets.imePadding
 import com.skydoves.landscapist.glide.GlideImage
 
 @Composable
 fun SheetContent(actionRowHeight: Dp, expandFraction: Float, onCaptureFaceClick: () -> Unit) {
-    val sheetContentHeight = 350.dp
-    val offsetY = actionRowHeight * (1 - expandFraction)
-    val actionRowAlpha = 1.0f * (1 - expandFraction * 3f)
-    Box(modifier = Modifier.height(sheetContentHeight)) {
-        ActionRow(actionRowHeight, actionRowAlpha, onCaptureFaceClick)
-        FacesSurface(offsetY, sheetContentHeight, expandFraction)
+    ProvideWindowInsets {
+        val sheetContentHeight = 350.dp
+        val offsetY = actionRowHeight * (1 - expandFraction)
+        val actionRowAlpha = 1.0f * (1 - expandFraction * 3f)
+        Box(modifier = Modifier
+            .imePadding()
+            .height(sheetContentHeight)) {
+            ActionRow(actionRowHeight, actionRowAlpha, onCaptureFaceClick)
+            FacesSurface(offsetY, sheetContentHeight, expandFraction)
+        }
     }
 }
 
@@ -132,7 +138,6 @@ private fun FacesLazyRow(offsetY: Dp) {
                                 .align(Alignment.Center)
                                 .fillMaxWidth()
                                 .padding(horizontal = 25.dp)
-                                .background(Color.Red)
                                 .onFocusChanged { focusState ->
                                     if (focusState.hasFocus.not() && label != savedFace.label) {
                                         viewModel.updateSavedFaceLabel(savedFace = savedFace, label)
