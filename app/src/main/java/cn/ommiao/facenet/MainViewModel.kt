@@ -15,6 +15,7 @@ import cn.ommiao.facenet.model.SavedFace
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.io.File
 
 class MainViewModel : ViewModel() {
 
@@ -73,6 +74,7 @@ class MainViewModel : ViewModel() {
             withContext(Dispatchers.IO){
                 allSavedFaces.remove(savedFace)
                 db.savedFaceDao().delete(savedFace)
+                File(savedFace.filePath).delete()
             }
         }
     }

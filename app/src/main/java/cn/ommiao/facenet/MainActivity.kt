@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.window.WindowManager
@@ -68,15 +69,8 @@ class MainActivity : ComponentActivity() {
                 val cameraProviderFuture =
                     remember { ProcessCameraProvider.getInstance(this@MainActivity) }
                 initCameraLensFacing(cameraProviderFuture)
-                val scaffoldState = rememberBottomSheetScaffoldState(
-                    bottomSheetState = rememberBottomSheetState(
-                        initialValue = BottomSheetValue.Collapsed,
-                        animationSpec = spring(
-                            dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessLow
-                        )
-                    )
-                )
+                val scaffoldState = rememberBottomScaffoldState()
+                AutoClearFocus(scaffoldState)
                 val sheetPeekHeight = 150.dp
                 val sheetBackgroundColor =
                     Color.White.copy(alpha = scaffoldState.expandFraction)
@@ -99,6 +93,27 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
+        }
+    }
+
+    @OptIn(ExperimentalMaterialApi::class)
+    @Composable
+    private fun rememberBottomScaffoldState() = rememberBottomSheetScaffoldState(
+        bottomSheetState = rememberBottomSheetState(
+            initialValue = BottomSheetValue.Collapsed,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessLow
+            )
+        )
+    )
+
+    @OptIn(ExperimentalMaterialApi::class)
+    @Composable
+    private fun AutoClearFocus(scaffoldState: BottomSheetScaffoldState) {
+        val focusManager = LocalFocusManager.current
+        if (scaffoldState.bottomSheetState.targetValue == BottomSheetValue.Collapsed) {
+            focusManager.clearFocus()
         }
     }
 
