@@ -72,6 +72,7 @@ class MainActivity : ComponentActivity() {
         return faceAnalyzer ?: FaceAnalyzer(
             screenSize = Size(screenRect.width(), screenRect.height()),
             assetManager = assets,
+            allSavedFaces = viewModel.allSavedFaces,
             onFaceDetected = {
                 viewModel.detectedFaces = it
             }) {

@@ -16,10 +16,13 @@ import cn.ommiao.facenet.model.SavedFace
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileOutputStream
+import java.util.*
+import kotlin.math.sqrt
 
 class FaceAnalyzer(
     private val screenSize: Size,
     private val assetManager: AssetManager,
+    private val allSavedFaces: List<SavedFace>,
     private val onFaceDetected: (List<DetectedFace>) -> Unit,
     private val onFaceSaved: (List<SavedFace>) -> Unit
 ) : ImageAnalysis.Analyzer {
@@ -57,8 +60,11 @@ class FaceAnalyzer(
                 val rect: Rect = box.transform2Rect()
                 Utils.rectExtend(bitmap, rect, 5)
 
+                val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
+
+                val feature = facenet.recognizeImage(bitmapFaceCropped)
+
                 if (captureNextFaces) {
-                    val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
                     val name = System.currentTimeMillis().toString()
 
                     @Suppress("DEPRECATION")
@@ -67,8 +73,9 @@ class FaceAnalyzer(
                     saveBitmap(bitmapFaceCropped, path)
                     savedFacesList.add(
                         SavedFace(
-                            label = "None",
-                            filePath = path
+                            label = UUID.randomUUID().toString().takeLast(8),
+                            filePath = path,
+                            feature = feature
                         )
                     )
                 }
@@ -86,11 +93,24 @@ class FaceAnalyzer(
                     imageHeight = bitmap.height
                 )
 
+                val similarFace = allSavedFaces.map {
+                    it.label to it.feature.differentWith(feature)
+                }.sortedBy { it.second }.firstOrNull()
+
+                var detectedFaceLabel = "Unknown"
+                similarFace?.let {
+                    if (it.second < 1.1) {
+                        detectedFaceLabel = it.first
+                    }
+                }
                 liveFacesList.add(
                     DetectedFace(
                         faceRect = rect,
                         facePoints = points,
-                        faceFeature = FaceFeature()
+                        faceFeature = FaceFeature(
+                            label = detectedFaceLabel,
+                            feature = feature
+                        )
                     )
                 )
 
@@ -101,14 +121,18 @@ class FaceAnalyzer(
 
         image.close()
 
-        if (captureNextFaces) {
-            onFaceSaved(savedFacesList)
-        }
-
         if (savedFacesList.isNotEmpty() || captureTryTimes >= 5) {
+            onFaceSaved(savedFacesList)
             captureTryTimes = 0
             captureNextFaces = false
         }
+    }
+
+    private fun FloatArray.differentWith(other: FloatArray): Double {
+        val dist = this.indices.sumOf { i ->
+            ((this[i] - other[i]) * (this[i] - other[i])).toDouble()
+        }
+        return sqrt(dist)
     }
 
     private fun scaleBoxToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {

@@ -1,7 +1,6 @@
 package cn.ommiao.facenet.ui.composable
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.background
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -73,10 +72,11 @@ private fun FacesSurfaceSpinner(expandFraction: Float, offsetY: Dp) {
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun FacesLazyRow(offsetY: Dp) {
     val viewModel: MainViewModel = viewModel()
-    val savedFaces = viewModel.savedFaces
+    val savedFaces = viewModel.allSavedFaces
     if (savedFaces.isEmpty()) {
         Box(
             Modifier
@@ -98,7 +98,12 @@ private fun FacesLazyRow(offsetY: Dp) {
                 Card(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(200.dp),
+                        .width(200.dp)
+                        .combinedClickable(onLongClick = {
+                            viewModel.deleteSavedFace(it)
+                        }) {
+
+                        },
                     shape = RoundedCornerShape(25.dp),
                     elevation = 2.dp
                 ) {
@@ -122,7 +127,7 @@ private fun FacesLazyRow(offsetY: Dp) {
 @Composable
 private fun FacesSurfaceTitle(offsetY: Dp) {
     val viewModel: MainViewModel = viewModel()
-    val facesSize = viewModel.savedFaces.size
+    val facesSize = viewModel.allSavedFaces.size
     Text(
         text = buildAnnotatedString {
             withStyle(SpanStyle(fontSize = 20.sp)) {

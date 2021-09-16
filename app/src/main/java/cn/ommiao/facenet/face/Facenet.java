@@ -1,13 +1,13 @@
 package cn.ommiao.facenet.face;
 
+import static cn.ommiao.facenet.model.FaceDataKt.DIMS;
+
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.Matrix;
 import android.util.Log;
 
 import org.tensorflow.contrib.android.TensorFlowInferenceInterface;
-
-import cn.ommiao.facenet.model.FaceFeature;
 
 /**
  * 功能：人脸转换为512维特征向量
@@ -65,7 +65,7 @@ public class Facenet {
         //Log.d("Facenet","[*]normalizeImage"+intValues.length);
     }
 
-    public synchronized FaceFeature recognizeImage(final Bitmap bitmap) {
+    public synchronized float[] recognizeImage(final Bitmap bitmap) {
         //Log.d("Facenet","[*]recognizeImage");
         //(0)图片预处理，normailize
         normalizeImage(bitmap);
@@ -88,14 +88,13 @@ public class Facenet {
             return null;
         }
         //(3)fetch
-        FaceFeature faceFeature = new FaceFeature();
-        float[] outputs = faceFeature.getFeature();
+        float[] outputs = new float[DIMS];
         try {
             inferenceInterface.fetch(OUTPUT_NAME, outputs);
         } catch (Exception e) {
             Log.e("Facenet", "[*] fetch error\n" + e);
             return null;
         }
-        return faceFeature;
+        return outputs;
     }
 }

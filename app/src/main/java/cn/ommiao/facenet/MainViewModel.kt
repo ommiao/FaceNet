@@ -30,7 +30,7 @@ class MainViewModel : ViewModel() {
 
     var detectedFaces by mutableStateOf(listOf<DetectedFace>())
 
-    val savedFaces by mutableStateOf(mutableStateListOf<SavedFace>())
+    val allSavedFaces by mutableStateOf(mutableStateListOf<SavedFace>())
 
     private lateinit var db: AppDatabase
 
@@ -58,7 +58,7 @@ class MainViewModel : ViewModel() {
     }
 
     fun addSavedFaces(newSavedFaces: List<SavedFace>) {
-        savedFaces.addAll(newSavedFaces)
+        allSavedFaces.addAll(newSavedFaces)
         viewModelScope.launch {
             withContext(Dispatchers.IO){
                 newSavedFaces.forEach {
@@ -71,7 +71,16 @@ class MainViewModel : ViewModel() {
     fun initSavedFaces() {
         viewModelScope.launch {
             withContext(Dispatchers.IO){
-                savedFaces.addAll(db.savedFaceDao().getAll())
+                allSavedFaces.addAll(db.savedFaceDao().getAll())
+            }
+        }
+    }
+
+    fun deleteSavedFace(savedFace: SavedFace){
+        viewModelScope.launch {
+            withContext(Dispatchers.IO){
+                allSavedFaces.remove(savedFace)
+                db.savedFaceDao().delete(savedFace)
             }
         }
     }
