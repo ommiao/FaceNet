@@ -60,6 +60,8 @@ class FaceAnalyzer(
                 if (captureNextFaces) {
                     val bitmapFaceCropped: Bitmap = Utils.crop(bitmap, rect)
                     val name = System.currentTimeMillis().toString()
+
+                    @Suppress("DEPRECATION")
                     val path =
                         "${Environment.getExternalStorageDirectory()}/Download/FaceNet/${name}.jpg"
                     saveBitmap(bitmapFaceCropped, path)
@@ -71,8 +73,15 @@ class FaceAnalyzer(
                     )
                 }
 
-                convertToScreenSize(
+                scaleBoxToScreenSize(
                     rect = rect,
+                    imageWidth = bitmap.width,
+                    imageHeight = bitmap.height
+                )
+
+                val points = box.landmark
+                scalePointsToScreenSize(
+                    points = points,
                     imageWidth = bitmap.width,
                     imageHeight = bitmap.height
                 )
@@ -80,6 +89,7 @@ class FaceAnalyzer(
                 liveFacesList.add(
                     DetectedFace(
                         faceRect = rect,
+                        facePoints = points,
                         faceFeature = FaceFeature()
                     )
                 )
@@ -95,13 +105,13 @@ class FaceAnalyzer(
             onFaceSaved(savedFacesList)
         }
 
-        if (savedFacesList.isNotEmpty() || captureTryTimes >= 5){
+        if (savedFacesList.isNotEmpty() || captureTryTimes >= 5) {
             captureTryTimes = 0
             captureNextFaces = false
         }
     }
 
-    private fun convertToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {
+    private fun scaleBoxToScreenSize(rect: Rect, imageWidth: Int, imageHeight: Int) {
         val screenRatio = screenSize.width.toFloat() / screenSize.height.toFloat()
         val imageRatio = imageWidth.toFloat() / imageHeight.toFloat()
         if (imageRatio > screenRatio) {
@@ -117,6 +127,25 @@ class FaceAnalyzer(
                 if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
                     left = screenSize.width - right0
                     right = screenSize.width - left0
+                }
+            }
+        }
+    }
+
+    private fun scalePointsToScreenSize(points: Array<Point>, imageWidth: Int, imageHeight: Int) {
+        val screenRatio = screenSize.width.toFloat() / screenSize.height.toFloat()
+        val imageRatio = imageWidth.toFloat() / imageHeight.toFloat()
+        if (imageRatio > screenRatio) {
+            val scaleRatio = screenSize.height.toFloat() / imageHeight.toFloat()
+            val targetImageWidth = (scaleRatio * imageWidth).toInt()
+            points.forEach {
+                with(it) {
+                    x = (x * scaleRatio - (targetImageWidth - screenSize.width) / 2).toInt()
+                    y = (y * scaleRatio).toInt()
+                    val x0 = x
+                    if (lensFacing == CameraSelector.LENS_FACING_FRONT) {
+                        x = screenSize.width - x0
+                    }
                 }
             }
         }

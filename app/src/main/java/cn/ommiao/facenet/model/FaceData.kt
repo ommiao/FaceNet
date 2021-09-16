@@ -1,5 +1,6 @@
 package cn.ommiao.facenet.model
 
+import android.graphics.Point
 import android.graphics.Rect
 import androidx.room.*
 import java.util.*
@@ -7,6 +8,7 @@ import kotlin.math.sqrt
 
 data class DetectedFace(
     val faceRect: Rect,
+    val facePoints: Array<Point>,
     val faceFeature: FaceFeature
 )
 
@@ -57,7 +59,7 @@ object Converters {
 
     @TypeConverter
     fun fromString(value: String): FloatArray {
-        val array: FloatArray = FloatArray(DIMS)
+        val array = FloatArray(DIMS)
         value.split(",").map { it.toFloat() }.forEachIndexed { i, f -> array[i] = f }
         return array
     }
