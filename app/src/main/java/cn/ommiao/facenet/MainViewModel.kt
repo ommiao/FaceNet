@@ -85,4 +85,17 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun updateSavedFaceLabel(savedFace: SavedFace, newLabel: String){
+        viewModelScope.launch {
+            withContext(Dispatchers.IO){
+                val index = allSavedFaces.indexOf(savedFace)
+                val copy = savedFace.copy(
+                    label = newLabel
+                )
+                allSavedFaces[index] = copy
+                db.savedFaceDao().update(copy)
+            }
+        }
+    }
+
 }

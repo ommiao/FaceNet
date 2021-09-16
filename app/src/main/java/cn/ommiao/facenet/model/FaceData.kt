@@ -36,6 +36,9 @@ interface SavedFaceDao {
 
     @Delete
     fun delete(face: SavedFace)
+
+    @Update
+    fun update(face: SavedFace)
 }
 
 @Database(entities = [SavedFace::class], version = 1)

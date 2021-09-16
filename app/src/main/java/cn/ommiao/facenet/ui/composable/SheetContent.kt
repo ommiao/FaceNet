@@ -5,19 +5,26 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.Card
 import androidx.compose.material.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
@@ -90,32 +97,53 @@ private fun FacesLazyRow(offsetY: Dp) {
         }
     } else {
         LazyRow(
-            modifier = Modifier.offset(y = offsetY),
+            modifier = Modifier
+                .offset(y = offsetY)
+                .fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             contentPadding = PaddingValues(bottom = 20.dp, start = 20.dp, end = 20.dp)
         ) {
-            items(savedFaces) {
+            items(savedFaces) { savedFace ->
+                val focusManager = LocalFocusManager.current
                 Card(
                     modifier = Modifier
                         .fillMaxHeight()
                         .width(200.dp)
+                        .clip(RoundedCornerShape(25.dp))
                         .combinedClickable(onLongClick = {
-                            viewModel.deleteSavedFace(it)
+                            viewModel.deleteSavedFace(savedFace)
                         }) {
-
+                            focusManager.clearFocus()
                         },
                     shape = RoundedCornerShape(25.dp),
                     elevation = 2.dp
                 ) {
                     GlideImage(
                         modifier = Modifier.fillMaxSize(),
-                        imageModel = it.filePath,
+                        imageModel = savedFace.filePath,
                         contentScale = ContentScale.Crop
                     )
                     Box {
-                        Text(
-                            text = it.label,
-                            modifier = Modifier.align(Alignment.Center)
+                        var label by remember { mutableStateOf(savedFace.label) }
+                        BasicTextField(
+                            value = label,
+                            onValueChange = { label = it },
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .fillMaxWidth()
+                                .padding(horizontal = 25.dp)
+                                .background(Color.Red)
+                                .onFocusChanged { focusState ->
+                                    if (focusState.hasFocus.not() && label != savedFace.label) {
+                                        viewModel.updateSavedFaceLabel(savedFace = savedFace, label)
+                                    }
+                                },
+                            textStyle = TextStyle.Default.copy(textAlign = TextAlign.Center),
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = {
+                                focusManager.clearFocus()
+                            })
                         )
                     }
                 }
