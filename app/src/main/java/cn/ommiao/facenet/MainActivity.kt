@@ -68,7 +68,9 @@ class MainActivity : ComponentActivity() {
             FaceNetTheme {
                 val cameraProviderFuture =
                     remember { ProcessCameraProvider.getInstance(this@MainActivity) }
-                initCameraLensFacing(cameraProviderFuture)
+                LaunchedEffect(Unit) {
+                    initCameraLensFacing(cameraProviderFuture)
+                }
                 val scaffoldState = rememberBottomScaffoldState()
                 AutoClearFocus(scaffoldState)
                 val sheetPeekHeight = 150.dp
@@ -129,6 +131,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         viewModel.initCameraLensFacing(isSwitchCameraEnabled, lensFacing)
+        println("-------initCameraLensFacing")
     }
 
     @Composable
