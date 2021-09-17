@@ -95,7 +95,7 @@ class FaceAnalyzer(
 
                 val similarFace = allSavedFaces.map {
                     it.label to it.feature.differentWith(feature)
-                }.sortedBy { it.second }.firstOrNull()
+                }.minByOrNull { it.second }
 
                 var detectedFaceLabel = "Unknown"
                 similarFace?.let {
