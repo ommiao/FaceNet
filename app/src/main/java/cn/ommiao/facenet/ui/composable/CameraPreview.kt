@@ -2,6 +2,7 @@ package cn.ommiao.facenet.ui.composable
 
 import android.content.Context
 import android.os.AsyncTask
+import android.util.Size
 import android.view.Surface
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -13,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -80,6 +80,9 @@ private fun bindCameraUseCases(
             val analyzer = ImageAnalysis.Builder()
                 .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
                 .setTargetRotation(Surface.ROTATION_0)
+//                .setTargetResolution(Size(1080, 1920)) //too slow
+                .setTargetResolution(Size(720, 1270))
+//                .setTargetResolution(Size(480, 640)) //not clear
                 .build().apply {
                     setAnalyzer(AsyncTask.THREAD_POOL_EXECUTOR,
                         faceAnalyzer.apply {
